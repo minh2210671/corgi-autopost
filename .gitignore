@@ -1,9 +1,10 @@
 node_modules/
+.next/
+out/
+.vercel
 .env
 .env.*
 !.env.example
-pages.json
-output/
-data/
-*.log
+*.tsbuildinfo
+next-env.d.ts
 .DS_Store

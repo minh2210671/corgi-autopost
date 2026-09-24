@@ -1,14 +1,24 @@
 {
   "name": "corgi-autopost",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Tự lên ý tưởng corgi -> tạo ảnh (OpenAI) -> tạo video (Veo 3 / Gemini) -> đăng hàng loạt lên Fanpage Facebook",
-  "type": "module",
-  "engines": { "node": ">=20" },
   "scripts": {
-    "run": "node src/cli.mjs run",
-    "ideas": "node src/cli.mjs ideas",
-    "pages:sync": "node src/cli.mjs pages:sync",
-    "demo": "node src/cli.mjs run --count 2 --dry-run"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.39.0",
+    "@vercel/blob": "^2.8.0",
+    "next": "^16.3.6",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^7.0.2"
   }
 }

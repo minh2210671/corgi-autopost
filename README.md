@@ -1,89 +1,86 @@
 # Corgi Auto Post 🐶
 
-Công cụ tự động chạy từ đầu đến cuối:
+Web app chạy trên **Vercel**, tự động từ đầu đến cuối:
 
-1. **Lên ý tưởng**: ChatGPT (OpenAI) nghĩ ra các cảnh corgi, không trùng với những ý tưởng đã dùng (lưu ở `data/history.json`). Mỗi ý tưởng có prompt ảnh, prompt video, caption và hashtag.
-2. **Tạo ảnh**: OpenAI Images API (`gpt-image-1`) tạo khung hình đầu dạng dọc.
-3. **Tạo video**: **Veo 3** qua Gemini API tạo video ngắn 9:16 có âm thanh từ ảnh đó.
-4. **Đăng hàng loạt**: đăng dạng **Reels** lên nhiều Fanpage Facebook, đăng ngay hoặc hẹn giờ.
+1. **ChatGPT** lên ý tưởng cảnh corgi, không lặp lại ý tưởng cũ, kèm caption và hashtag.
+2. **gpt-image-1** tạo ảnh khung hình đầu.
+3. **Veo 3** (Gemini API) biến ảnh thành video dọc 9:16 dài 8 giây, có âm thanh.
+4. **Đăng Reels hàng loạt** lên nhiều Fanpage: đăng ngay, hẹn giờ, hoặc chờ bạn duyệt rồi mới đăng.
 
-Không phải cài thư viện nào, chỉ cần **Node.js ≥ 20**.
+Giao diện có 3 tab: **Video** (tạo đợt, xem, sửa caption, đăng, thử lại), **Fanpage** (kết nối, bật/tắt Page) và **Cài đặt** (chủ đề kênh, đợt tự động mỗi ngày).
 
-## Cài đặt
+---
 
-```bash
-cd corgi-autopost
-cp .env.example .env              # điền OPENAI_API_KEY, GEMINI_API_KEY
-```
+## Triển khai lên Vercel (khoảng 10 phút)
 
-### Lấy key
+### 1. Import repo
+Vào **vercel.com/new**, chọn repo `corgi-autopost` và bấm **Deploy**. Lần deploy đầu có thể báo thiếu cấu hình, cứ tiếp tục các bước dưới.
 
-| Dịch vụ | Nơi lấy | Ghi chú |
+### 2. Kết nối Storage
+Trong Project, mở tab **Storage**:
+- **Create → Upstash (Redis)**: lưu danh sách video, Page và cài đặt. Gói Free là đủ. Bấm *Connect* vào project.
+- **Create → Blob**: lưu ảnh và video. Chọn quyền truy cập **Public**, vì Facebook cần tải video từ link công khai. Bấm *Connect* vào project.
+
+Vercel tự thêm các biến `KV_REST_API_*` và `BLOB_READ_WRITE_TOKEN`.
+
+### 3. Khai báo biến môi trường
+Vào **Settings → Environment Variables** và thêm các biến sau (xem đầy đủ trong `.env.example`):
+
+| Biến | Bắt buộc | Ghi chú |
 |---|---|---|
-| OpenAI | platform.openai.com → API keys | Tổ chức phải **Verify Organization** thì mới dùng được `gpt-image-1` |
-| Gemini / Veo | aistudio.google.com → Get API key | Veo phải dùng project **có bật thanh toán** (gói trả phí) |
-| Facebook | developers.facebook.com → tạo App (Business) | Xem phần dưới |
+| `APP_PASSWORD` | ✅ | Mật khẩu đăng nhập web |
+| `CRON_SECRET` | ✅ | Chuỗi ngẫu nhiên, dùng cho cron |
+| `OPENAI_API_KEY` | ✅ | platform.openai.com. Tổ chức phải **Verify Organization** mới dùng được gpt-image-1 |
+| `GEMINI_API_KEY` | ✅ | aistudio.google.com. Project phải **bật Billing** mới dùng được Veo |
+| `FB_APP_ID`, `FB_APP_SECRET` | nên có | Lấy trong App Facebook (Settings → Basic), giúp Page token **không hết hạn** |
+| `VEO_MODEL` … | không | Các biến tuỳ chỉnh khác |
 
-### Kết nối Fanpage
+### 4. Deploy lại
+Vào **Deployments**, bấm **⋯ → Redeploy** để áp dụng biến môi trường. Mở link `https://<tên-project>.vercel.app` và đăng nhập bằng `APP_PASSWORD`.
 
-1. Tạo App trên Meta for Developers, vào **Graph API Explorer**, chọn App, lấy **User Token** với các quyền:
-   `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `business_management`.
-2. Đổi sang token dài hạn (Access Token Debugger → *Extend Access Token*), rồi dán vào `FB_USER_ACCESS_TOKEN` trong `.env`.
-3. Chạy:
-   ```bash
-   node src/cli.mjs pages:sync
-   ```
-   Lệnh này tạo `pages.json` gồm mọi Page bạn quản lý, kèm Page token (Page token lấy từ user token dài hạn thì không hết hạn).
-   Page nào không muốn đăng thì sửa `"enabled": false`.
+> **Thời gian chạy tối đa:** app cần mỗi lượt xử lý chạy được đến 300 giây. Trên gói Hobby, hãy chắc chắn **Fluid Compute** đang bật (Settings → Functions), mặc định là bật với project mới.
 
-> `.env` và `pages.json` chứa token bí mật và **không được commit** (đã có trong `.gitignore`).
+---
+
+## Kết nối Fanpage
+
+1. Vào developers.facebook.com, tạo App loại **Business**.
+2. Trong tab **Fanpage** của web app, làm theo 3 bước hướng dẫn: lấy User Token từ **Graph API Explorer** với các quyền `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `business_management`, rồi dán vào ô và bấm **Kết nối**.
+3. Mọi Page bạn quản lý sẽ hiện ra. Tắt những Page không muốn đăng.
+
+Token lưu ở máy chủ (Redis), không bao giờ gửi ra trình duyệt.
 
 ## Sử dụng
 
+- **Tạo đợt**: chọn số video cho mỗi Page, chủ đề (không bắt buộc), tự đăng hay chờ duyệt, có hẹn giờ không, rồi bấm **Tạo video**.
+- Video đi qua các trạng thái: *Chờ tạo ảnh* → *Veo đang tạo video* (1–3 phút) → *Video xong* → *Đã đăng*.
+- Ở chế độ chờ duyệt, bạn có thể xem video, sửa caption, rồi bấm **Đăng ngay**.
+- Nếu một bước lỗi, app tự thử lại tối đa 3 lần. Nếu vẫn lỗi, bấm **Thử lại**: app chỉ đăng lại những Page bị lỗi.
+
+## Xử lý khi đóng trang và đợt tự động mỗi ngày
+
+Khi trang đang mở, trình duyệt tự đẩy các video đi tiếp. Để app **chạy cả khi bạn đóng trang** (bắt buộc nếu dùng đợt tự động mỗi ngày):
+
+- Vercel gói Hobby chỉ cho cron **1 lần/ngày**. App đã cài sẵn cron 7h sáng giờ VN để tạo đợt tự động. Nhưng để video được render và đăng xong, cần gọi cron thường xuyên hơn.
+- **Cách miễn phí**: tạo tài khoản **cron-job.org**, thêm job gọi URL sau **mỗi 5 phút**:
+  ```
+  https://<tên-project>.vercel.app/api/cron?secret=<CRON_SECRET>
+  ```
+- Nếu dùng Vercel Pro, có thể sửa `vercel.json` thành `"schedule": "*/5 * * * *"`.
+
+Bật đợt tự động trong tab **Cài đặt**: chọn giờ tạo đợt, số video mỗi Page mỗi ngày và các giờ đăng (ví dụ `11:00, 19:00`).
+
+## Chi phí và lưu ý
+
+- **Veo** tính tiền theo giây video và là khoản tốn nhất. Hãy thử 1 video trước để biết giá thực tế.
+- **Vercel Blob** gói Free có dung lượng giới hạn. Nên xoá video cũ đã đăng (nút **Xoá** sẽ xoá cả file).
+- Nên dùng chế độ **mỗi Page một video riêng** để tránh bị Facebook coi là spam do nội dung trùng lặp.
+- Facebook chỉ cho hẹn giờ trong khoảng từ 10 phút đến 75 ngày. Nếu video xong khi đã qua giờ hẹn, app sẽ đăng ngay.
+
+## Chạy trên máy (tuỳ chọn)
+
 ```bash
-# Chạy thử toàn bộ luồng, không gọi API nào (dùng pages.example.json)
-node src/cli.mjs run --count 2 --dry-run
-
-# Chỉ xem ý tưởng
-node src/cli.mjs ideas --count 5
-
-# Mỗi Page nhận 1 video KHÁC NHAU, đăng ngay (nghỉ khoảng 60 giây giữa các bài)
-node src/cli.mjs run
-
-# Mỗi Page nhận 3 video, hẹn giờ từ 8h sáng mai, mỗi bài cách nhau 3 tiếng
-node src/cli.mjs run --per-page 3 --start-at 2026-09-25T08:00+07:00 --every 180
-
-# 1 video đăng lên TẤT CẢ Page
-node src/cli.mjs run --count 1 --mode same
-
-# Chỉ tạo video, chưa đăng; xem lại rồi mới đăng
-node src/cli.mjs run --count 4 --no-post
-node src/cli.mjs post --dir output/2026-09-24-08-00-00-01-corgi-...
-
-# Chỉ đăng lên vài Page cụ thể
-node src/cli.mjs run --pages 1234567890,2345678901
+npm install
+cp .env.example .env.local   # điền key + URL/Token Upstash + BLOB_READ_WRITE_TOKEN
+npm run dev
 ```
-
-Mỗi video nằm trong `output/<thời-gian>-<tên>/` gồm `image.png`, `video.mp4` và `meta.json` (ý tưởng, caption, kết quả đăng lên từng Page).
-Chạy lại `post` cho cùng thư mục sẽ **bỏ qua các Page đã đăng thành công**, nên có thể thử lại những Page bị lỗi mà không đăng trùng.
-
-## Tự chạy hằng ngày (cron)
-
-```cron
-# 7h sáng mỗi ngày (máy đặt giờ VN): tạo 2 video/Page, hẹn đăng 11h và 19h
-0 7 * * * cd /đường-dẫn/corgi-autopost && node src/cli.mjs run --per-page 2 --start-at "$(date +\%F)T11:00+07:00" --every 480 >> run.log 2>&1
-```
-
-## Tuỳ chỉnh
-
-- `CHANNEL_STYLE` trong `.env`: định hướng nội dung (ví dụ: "corgi đi du lịch Việt Nam", "corgi làm việc văn phòng hài hước").
-- `VEO_MODEL`: `veo-3.1-fast-generate-preview` (rẻ và nhanh, mặc định), `veo-3.1-generate-preview` (đẹp hơn), `veo-3.0-generate-001`.
-- Prompt hệ thống để lên ý tưởng nằm trong `src/ideas.mjs`.
-
-## Lưu ý
-
-- **Chi phí**: Veo tính tiền theo giây video, và đây là khoản tốn nhất. Nên chạy `--dry-run` và `--count 1` trước để kiểm tra.
-- **Tránh bị Facebook đánh spam**: nên dùng `--mode distribute` (mỗi Page một video riêng) thay vì đăng cùng một video lên nhiều Page. Đăng giãn cách, không quá dày.
-- Facebook chỉ cho hẹn giờ trong khoảng **10 phút đến 75 ngày** kể từ lúc chạy lệnh.
-- Reels yêu cầu video dọc 9:16, dài 3–90 giây. Veo trả video 720p/1080p dài 8 giây, đạt yêu cầu.
-- Nếu Veo từ chối một ảnh hoặc prompt vì bộ lọc an toàn, video đó được ghi là lỗi, công cụ vẫn chạy tiếp các video còn lại.
