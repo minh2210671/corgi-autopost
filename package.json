@@ -1,0 +1,14 @@
+{
+  "name": "corgi-autopost",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tự lên ý tưởng corgi -> tạo ảnh (OpenAI) -> tạo video (Veo 3 / Gemini) -> đăng hàng loạt lên Fanpage Facebook",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "run": "node src/cli.mjs run",
+    "ideas": "node src/cli.mjs ideas",
+    "pages:sync": "node src/cli.mjs pages:sync",
+    "demo": "node src/cli.mjs run --count 2 --dry-run"
+  }
+}
